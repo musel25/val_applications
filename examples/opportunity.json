@@ -1,0 +1,13 @@
+{
+  "company": "Example Research Lab",
+  "reference": "THESIS-001",
+  "title": "MSc thesis in network analytics",
+  "country": "Finland",
+  "url": "https://example.org/jobs/THESIS-001",
+  "description": "Illustrative entry only. Replace with requirements from the official employer posting.",
+  "deadline": null,
+  "reviewed_at": "2026-09-29",
+  "fit": 70,
+  "reasons": "Example only: record supported fit, essential gaps, and source evidence.",
+  "thesis": true
+}
