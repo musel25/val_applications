@@ -36,6 +36,22 @@ report completed attempts and the exact missing facts; do not claim the target.
 8. End by updating private `data/session.md`: confirmed submissions, attempts,
    blockers, active tabs and next actions. Keep receipts and original packets.
 
+## Email review for every application batch
+
+Verify the mailbox belongs to the candidate before reading or changing mail.
+Review application messages at the start and end of each batch, including spam.
+Read the full thread before classifying it; a thank-you subject may still contain
+an assessment, verification, deadline, interview or document request.
+
+Archive acknowledgment-only messages after preserving any required receipt in
+the private packet. Keep them recoverable in All Mail. Never delete messages
+requiring an assessment or any other action. Label those
+`Applications - Action required`, star pending actions, and record the employer,
+requested action, deadline and message reference in the private session handoff.
+Preserve account-access messages and application backups separately. Keep
+uncertain messages in the inbox for review. Do not complete assessments.
+Record actual email-review counts and any access blockers with the batch result.
+
 ## Commands
 
 ```sh
