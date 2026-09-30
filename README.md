@@ -1,18 +1,25 @@
-# European thesis internship search
+# Local master's thesis application workflow
 
-A simple, local workflow for finding European master's thesis internships,
-prioritizing Finland. Inspired by `job-search-2026`: verified candidate facts,
-role-specific documents, duplicate prevention and evidence-backed application
-records. No VPS or background services.
+A small Python CLI and SQLite tracker for European master's thesis internships,
+with Finland-first prioritization, factual CV rendering and durable application
+history. Candidate data, documents and application evidence stay local and out
+of public Git history.
 
-Python tooling uses `uv`. Candidate documents, contact details and application
-records stay local and are excluded from this public repository.
+Start with [Operating instructions](docs/OPERATIONS.md). In an assistant session,
+say **continue**, **apply to five**, or **status**. The assistant researches and
+operates employer forms interactively; the CLI never submits applications.
 
-## Structure
+```sh
+uv sync
+uv run pytest -q
+uv run src/tracker.py status
+uv run src/tracker.py queue
+```
 
-- `src/`: search and application tracker
-- `tests/`: workflow checks
-- `config/`: public search sources and scope
-- `templates/`: reusable document templates
-- `docs/`: operating instructions
-- `candidate/`, `data/`, `applications/`, `output/`: private local material
+- [Architecture](docs/design.md)
+- [Implementation plan](docs/implementation-plan.md)
+- [Official discovery sources](docs/SOURCES.md)
+- [Fictional opportunity example](examples/opportunity.json)
+
+Private state: `data/jobs.db`, `data/session.md`, `candidate/`, `applications/`
+and `output/`. There is no server, scheduled automation, VPS or sync layer.
