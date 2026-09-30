@@ -41,7 +41,7 @@ report completed attempts and the exact missing facts; do not claim the target.
 ```sh
 uv sync
 uv run pytest -q
-uv run src/cv.py candidate/cv.json output/pdf/Valeria_Enriquez_Limon_CV.pdf
+uv run src/cv.py candidate/cv.json output/pdf/cv.pdf
 uv run src/tracker.py add data/research/opportunities.json
 uv run src/tracker.py queue
 uv run src/tracker.py show 1
@@ -73,7 +73,9 @@ uv run src/tracker.py mark 1 submitted \
 The CLI checks evidence exists and saves its SHA-256; it cannot authenticate a
 receipt or certify candidate eligibility. A fabricated receipt would defeat the
 purpose. Core packet/source hashes detect changed CVs and candidate JSON. Save
-all extra attachments and exact answers in the packet before submission.
+all extra attachments and exact answers in the packet before submission. Recording
+submission validates the ledger, saves submitted-answers.json and hashes every
+packet artifact into the event. Do not edit submitted artifacts afterward.
 
 ## Private boundaries
 

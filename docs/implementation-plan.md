@@ -6,7 +6,7 @@
 **Execution:** inline, as authorized by the user's request to go ahead.
 
 1. Build factual candidate JSON and a reusable CV renderer. Preserve input PDF;
-   create `output/pdf/Valeria_Enriquez_Limon_CV.pdf`. Confirm one page, extracted
+   create `output/pdf/cv.pdf`. Confirm one page, extracted
    content, clickable links and visual layout. Keep candidate files ignored.
 2. Test and implement `Store.add`, `Store.prepare`, `Store.mark`, `Store.queue`:
    duplicate URLs/job references; scope and deadline checks; no re-preparation;
