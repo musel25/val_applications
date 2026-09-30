@@ -43,6 +43,8 @@ class Store:
           url TEXT NOT NULL UNIQUE, payload TEXT NOT NULL, status TEXT NOT NULL,
           note TEXT NOT NULL DEFAULT '', packet TEXT, reviewed_at TEXT NOT NULL);
         CREATE UNIQUE INDEX IF NOT EXISTS employer_reference ON jobs(company, reference) WHERE reference != '';
+        CREATE TABLE IF NOT EXISTS url_aliases (url TEXT PRIMARY KEY, job_id INTEGER NOT NULL);
+        INSERT OR IGNORE INTO url_aliases(url,job_id) SELECT url,id FROM jobs;
         CREATE TABLE IF NOT EXISTS events (
           id INTEGER PRIMARY KEY, job_id INTEGER NOT NULL, at TEXT NOT NULL,
           status TEXT NOT NULL, note TEXT NOT NULL, evidence TEXT NOT NULL DEFAULT '{}');
@@ -69,18 +71,22 @@ class Store:
         url = canonical_url(item['url'])
         company = item['company'].strip().casefold()
         reference = str(item.get('reference', '')).strip().casefold()
-        existing = self.db.execute('SELECT * FROM jobs WHERE url=? OR (company=? AND reference=? AND reference != ?)',
+        existing = self.db.execute('SELECT * FROM jobs WHERE id IN (SELECT job_id FROM url_aliases WHERE url=?) OR (company=? AND reference=? AND reference != ?)',
                                    (url, company, reference, '')).fetchall()
         if len(existing) > 1:
             raise ValueError('URL and employer reference identify different records; review duplicates manually')
         with self.db:
             if existing:
                 row = existing[0]
-                self.db.execute('UPDATE jobs SET payload=?, reviewed_at=? WHERE id=?', (json.dumps(item), reviewed, row['id']))
+                reference = reference or row['reference']
+                item['reference'] = item.get('reference') or json.loads(row['payload']).get('reference', '')
+                self.db.execute('UPDATE jobs SET company=?,reference=?,url=?,payload=?, reviewed_at=? WHERE id=?', (company, reference, url, json.dumps(item), reviewed, row['id']))
+                self.db.execute('INSERT OR IGNORE INTO url_aliases(url,job_id) VALUES(?,?)', (url, row['id']))
                 self._event(row['id'], row['status'], 'Official-source review refreshed; application state preserved', {'review': item})
                 return row['id']
             cursor = self.db.execute('INSERT INTO jobs(company,reference,url,payload,status,reviewed_at) VALUES(?,?,?,?,?,?)',
                                      (company, reference, url, json.dumps(item), 'discovered', reviewed))
+            self.db.execute('INSERT INTO url_aliases(url,job_id) VALUES(?,?)', (url, cursor.lastrowid))
             self._event(cursor.lastrowid, 'discovered', 'Opportunity recorded', {'review': item})
             return cursor.lastrowid
 
@@ -145,7 +151,7 @@ class Store:
             raise ValueError('Prepare first')
         return self.prepare(job, Path(item['packet']).parent, cv, facts, today, revision=True)
 
-    def mark(self, job, status, note, evidence=None):
+    def mark(self, job, status, note, evidence=None, *, today=None):
         item = self.get(job)
         if status not in STATES or not note.strip():
             raise ValueError('A valid status and explanatory note are required')
@@ -153,13 +159,25 @@ class Store:
             raise ValueError('Submitted records cannot be reset; record follow-up outside status')
         if status in {'discovered', 'prepared'}:
             raise ValueError('Cannot reset protected state; refresh reviews or resume explicitly')
-        if status == 'in_progress' and not item['packet']:
-            raise ValueError('Prepare a packet first')
+        if status == 'in_progress':
+            if (not item['packet'] or item['status'] not in {'prepared', 'blocked', 'interrupted', 'in_progress'}
+                    or not self.eligible(item, today or date.today())):
+                raise ValueError('Cannot apply: role must be prepared, current, in scope and resumable')
         proof = {}
         if status == 'submitted':
             if not item['packet'] or not evidence or not Path(evidence).is_file() or not Path(evidence).stat().st_size:
                 raise ValueError('Submission requires a prepared packet and nonempty employer evidence')
             packet = Path(item['packet'])
+            try:
+                answers = json.loads((packet / 'answers.json').read_text())
+                if not isinstance(answers, dict) or not isinstance(answers.get('answers'), list):
+                    raise ValueError('Invalid answer ledger')
+                for entry in answers['answers']:
+                    if (not isinstance(entry, dict) or not {'field', 'answer', 'provenance', 'entered'} <= entry.keys()
+                            or not entry['provenance'] or type(entry['entered']) is not bool):
+                        raise ValueError('Answer ledger entries need field, answer, provenance and entered flag')
+            except (OSError, ValueError) as exc:
+                raise ValueError('Valid answer ledger required before submission') from exc
             manifest = json.loads((packet / 'manifest.json').read_text())
             for name, expected in manifest['files'].items():
                 if not (packet / name).is_file() or digest(packet / name) != expected:
@@ -173,7 +191,9 @@ class Store:
             if target.exists() and target.read_bytes() != raw:
                 raise ValueError('A different confirmation already exists')
             target.write_bytes(raw)
-            proof = {'path': str(target), 'sha256': digest(target), 'observed_at': now()}
+            (packet / 'submitted-answers.json').write_text(json.dumps(answers, indent=2, ensure_ascii=False))
+            artifacts = {str(p.relative_to(packet)): digest(p) for p in packet.rglob('*') if p.is_file()}
+            proof = {'path': str(target), 'sha256': digest(target), 'observed_at': now(), 'artifacts': artifacts, 'answers': answers}
         with self.db:
             self.db.execute('UPDATE jobs SET status=?, note=? WHERE id=?', (status, note, job))
             self._event(job, status, note, proof)

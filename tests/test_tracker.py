@@ -159,3 +159,52 @@ def test_cli_persists_across_processes(tmp_path):
     subprocess.run(command + ['mark', '1', 'blocked', '--note', 'Phone required'], check=True, capture_output=True)
     listed = subprocess.run(command + ['list'], capture_output=True, text=True, check=True)
     assert json.loads(listed.stdout)[0]['note'] == 'Phone required'
+
+
+def test_enriched_reference_and_old_url_both_deduplicate(store):
+    job = store.add(role(reference=''))
+    store.mark(job, 'blocked', 'Keep state')
+    assert store.add(role(reference='A')) == job
+    assert store.add(role(reference='A', url='https://example.org/new')) == job
+    assert store.add(role(reference='', url='https://example.org/jobs?id=1')) == job
+    assert len(store.list()) == 1
+    assert store.get(job)['status'] == 'blocked'
+
+
+@pytest.mark.parametrize('change,state', [
+    ({'deadline':'2026-09-28'}, 'prepared'),
+    ({'reviewed_at':'2026-09-01'}, 'prepared'),
+    ({'country':'United States'}, 'prepared'),
+    ({'thesis':False}, 'prepared'),
+    ({}, 'closed'), ({}, 'excluded')])
+def test_cannot_enter_application_after_scope_or_status_changes(store, tmp_path, change, state):
+    job = store.add(role())
+    cv = tmp_path / 'cv'; cv.write_bytes(b'cv')
+    facts = tmp_path / 'facts'; facts.write_text('{}')
+    store.prepare(job, tmp_path / 'apps', cv, facts, today=date(2026, 9, 29))
+    store.add(role(**change))
+    if state != 'prepared':
+        store.mark(job, state, 'Not available')
+    with pytest.raises(ValueError):
+        store.mark(job, 'in_progress', 'Resume', today=date(2026, 9, 29))
+
+
+def test_submission_requires_ledger_and_snapshots_all_artifacts(store, tmp_path):
+    job = store.add(role())
+    cv = tmp_path / 'cv'; cv.write_bytes(b'cv')
+    facts = tmp_path / 'facts'; facts.write_text('{}')
+    packet = store.prepare(job, tmp_path / 'apps', cv, facts, today=date(2026, 9, 29))
+    (packet / 'answers.json').unlink()
+    proof = tmp_path / 'proof.txt'; proof.write_text('received')
+    with pytest.raises(ValueError, match='ledger'):
+        store.mark(job, 'submitted', 'Observed', proof)
+    answers = {'answers':[{'field':'Name', 'answer':'Example', 'provenance':'candidate.json', 'entered':True}], 'unknowns':[]}
+    (packet / 'answers.json').write_text(json.dumps(answers))
+    (packet / 'letter.txt').write_text('Tailored letter')
+    store.mark(job, 'submitted', 'Observed', proof)
+    evidence = json.loads(store.history(job)[-1]['evidence'])
+    assert 'letter.txt' in evidence['artifacts']
+    assert len(evidence['artifacts']['answers.json']) == 64
+    assert json.loads((packet / 'submitted-answers.json').read_text()) == answers
+    assert store.add(role()) == job
+    assert store.get(job)['status'] == 'submitted'
