@@ -3,8 +3,16 @@ name = "val-applications"
 version = "0.1.0"
 description = "Local European master's thesis internship search"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pypdf>=6.19.0",
+    "reportlab>=5.0.1",
+]
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
