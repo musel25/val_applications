@@ -1,0 +1,14 @@
+{
+  "name": "Example Candidate",
+  "headline": "MSc student · Data science",
+  "location": "Example City, Finland",
+  "email": "candidate@example.org",
+  "links": [{"label": "Portfolio", "url": "https://example.org"}],
+  "summary": "Fictional example only. Replace every field with supported candidate facts.",
+  "education": [{"title": "MSc in Example Subject", "dates": "2025 - Present", "organization": "Example University", "detail": "Replace with the exact supplied degree wording."}],
+  "projects": [{"title": "Example completed research project", "dates": "2026", "bullets": ["Describe attributable work, methods and verified evaluation results."]}],
+  "experience": [],
+  "skills": [{"label": "Programming", "text": "Include only confirmed languages and libraries"}],
+  "coursework": "Include only completed or accurately labeled ongoing courses.",
+  "languages": "Use the candidate's supplied levels."
+}
